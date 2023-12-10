@@ -2,6 +2,7 @@ package urlshort
 
 import (
 	"net/http"
+	"strings"
 )
 
 // MapHandler will return an http.HandlerFunc (which also
@@ -11,8 +12,13 @@ import (
 // If the path is not provided in the map, then the fallback
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
-	//	TODO: Implement this...
-	return nil
+	return func(w http.ResponseWriter, r *http.Request) {
+		if redirectUrl, ok := pathsToUrls[strings.TrimRight(r.URL.Path, "/ ")]; ok {
+			http.Redirect(w, r, redirectUrl, 301)
+			return
+		}
+		fallback.ServeHTTP(w, r)
+	}
 }
 
 // YAMLHandler will parse the provided YAML and then return
