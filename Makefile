@@ -1,2 +1,2 @@
 run:
-	cd scripts && sh run.sh
+	go run main/main.go -path=$(YAML)
