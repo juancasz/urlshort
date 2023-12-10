@@ -1,6 +1,7 @@
 package urlshort
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -48,6 +49,19 @@ type URLMapper struct {
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 	var mappers []URLMapper
 	err := yaml.Unmarshal(yml, &mappers)
+	if err != nil {
+		return nil, err
+	}
+	pathMap, err := buildMap(mappers)
+	if err != nil {
+		return nil, err
+	}
+	return MapHandler(pathMap, fallback), nil
+}
+
+func JSONHandler(data []byte, fallback http.Handler) (http.HandlerFunc, error) {
+	var mappers []URLMapper
+	err := json.Unmarshal(data, &mappers)
 	if err != nil {
 		return nil, err
 	}

@@ -1,2 +1,2 @@
 run:
-	go run main/main.go -path=$(YAML)
+	go run main/main.go -yaml=$(YAML) -json=$(JSON)
