@@ -63,3 +63,97 @@ func TestMapHandler(t *testing.T) {
 		})
 	}
 }
+
+func TestYAMLHandler(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, world!")
+	})
+
+	tests := map[string]struct {
+		yml                []byte
+		fallback           http.Handler
+		requestPath        string
+		expectedStatusCode int
+	}{
+		"correct handler": {
+			yml: []byte(`
+- path: /urlshort
+  url: https://github.com/gophercises/urlshort
+- path: /urlshort-final
+  url: https://github.com/gophercises/urlshort/tree/solution
+`),
+			fallback:           mux,
+			requestPath:        "/urlshort-final",
+			expectedStatusCode: 301,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler, err := YAMLHandler(tc.yml, tc.fallback)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, err := http.NewRequest("GET", tc.requestPath, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler(rr, req)
+			if status := rr.Code; status != tc.expectedStatusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.expectedStatusCode)
+			}
+		})
+	}
+}
+
+func TestJSONHandler(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Hello, world!")
+	})
+
+	tests := map[string]struct {
+		json               []byte
+		fallback           http.Handler
+		requestPath        string
+		expectedStatusCode int
+	}{
+		"correct handler": {
+			json: []byte(`
+[
+	{
+		"path": "/urlshort",
+		"url": "https://github.com/gophercises/urlshort"
+	},
+	{
+		"path": "/urlshort-final",
+		"url": "https://github.com/gophercises/urlshort/tree/solution"
+	}
+]
+`),
+			fallback:           mux,
+			requestPath:        "/urlshort-final",
+			expectedStatusCode: 301,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler, err := JSONHandler(tc.json, tc.fallback)
+			if err != nil {
+				t.Fatal(err)
+			}
+			req, err := http.NewRequest("GET", tc.requestPath, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler(rr, req)
+			if status := rr.Code; status != tc.expectedStatusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.expectedStatusCode)
+			}
+		})
+	}
+}
