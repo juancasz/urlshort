@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"urlshort"
 )
@@ -63,11 +64,17 @@ func readFile(yaml, json *string) (*fileData, error) {
 	if len(*yaml) > 0 && len(*json) > 0 {
 		return nil, fmt.Errorf("must provide json or yaml but not both at the same time")
 	} else if len(*yaml) > 0 {
-		filedata.isYAML = true
 		path = *yaml
+		if ext := filepath.Ext(path); ext != ".yml" && ext != ".yaml" {
+			return nil, fmt.Errorf("expected yml or yaml file")
+		}
+		filedata.isYAML = true
 	} else if len(*json) > 0 {
-		filedata.isJSON = true
 		path = *json
+		if ext := filepath.Ext(path); ext != ".json" {
+			return nil, fmt.Errorf("expected json file")
+		}
+		filedata.isJSON = true
 	} else {
 		return nil, fmt.Errorf("must provide a file")
 	}
