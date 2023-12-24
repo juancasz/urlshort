@@ -17,6 +17,10 @@ import (
 // http.Handler will be called instead.
 func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
 		if redirectUrl, ok := pathsToUrls[strings.TrimRight(r.URL.Path, "/ ")]; ok {
 			http.Redirect(w, r, redirectUrl, 301)
 			return

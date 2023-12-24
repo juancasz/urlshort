@@ -62,6 +62,26 @@ func TestMapHandler(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("method not GET not valid", func(t *testing.T) {
+		mux := http.NewServeMux()
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprintln(w, "Hello, world!")
+		})
+		handler := MapHandler(map[string]string{
+			"/urlshort":       "https://github.com/gophercises/urlshort",
+			"/urlshort-final": "https://github.com/gophercises/urlshort/tree/solution",
+		}, mux)
+		req, err := http.NewRequest("POST", "/urlshort", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rr := httptest.NewRecorder()
+		handler(rr, req)
+		if status := rr.Code; status != http.StatusMethodNotAllowed {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusMethodNotAllowed)
+		}
+	})
 }
 
 func TestYAMLHandler(t *testing.T) {
