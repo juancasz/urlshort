@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 
 	"urlshort"
@@ -15,6 +17,7 @@ import (
 func main() {
 	yaml := flag.String("yaml", "", "path YAML file")
 	json := flag.String("json", "", "path JSON file")
+	listenAddress := flag.String("listen", ":8080", "Listen address.")
 	flag.Parse()
 
 	filedata, err := readFile(yaml, json)
@@ -24,7 +27,6 @@ func main() {
 
 	// fallback
 	mux := defaultMux()
-
 	var handler http.HandlerFunc
 	if filedata.isYAML {
 		handler, err = urlshort.YAMLHandler(filedata.data, mux)
@@ -37,8 +39,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
-	fmt.Println("Starting the server on :8080")
-	http.ListenAndServe(":8080", handler)
+
+	router(handler)
+	startServer(*listenAddress)
 }
 
 func defaultMux() *http.ServeMux {
@@ -91,4 +94,35 @@ func readFile(yaml, json *string) (*fileData, error) {
 	}
 
 	return &filedata, nil
+}
+
+func router(handler http.HandlerFunc) {
+	http.HandleFunc("/", handler)
+}
+
+func startServer(listenAddress string) {
+	log.Printf("Listening at http://%s", listenAddress)
+
+	httpServer := http.Server{
+		Addr: listenAddress,
+	}
+
+	idleConnectionsClosed := make(chan struct{})
+	go func() {
+		sigint := make(chan os.Signal, 1)
+		signal.Notify(sigint, os.Interrupt)
+		<-sigint
+		if err := httpServer.Shutdown(context.Background()); err != nil {
+			log.Printf("HTTP Server Shutdown Error: %v", err)
+		}
+		close(idleConnectionsClosed)
+	}()
+
+	if err := httpServer.ListenAndServe(); err != http.ErrServerClosed {
+		log.Fatalf("HTTP server ListenAndServe Error: %v", err)
+	}
+
+	<-idleConnectionsClosed
+
+	log.Printf("Bye bye")
 }

@@ -1,5 +1,8 @@
-run:
-	go run main/main.go -yaml=$(YAML) -json=$(JSON)
+run_with_file:
+	go run cmd/file/main.go -yaml=$(YAML) -json=$(JSON)
+
+run_with_postgres:
+	go run cmd/postgres/main.go
 
 tests:
 	go test ./... -coverprofile cover.out && go tool cover -func cover.out
