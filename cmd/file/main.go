@@ -96,15 +96,6 @@ func readFile(yaml, json *string) (*fileData, error) {
 	return &filedata, nil
 }
 
-type saver struct {
-	store map[string]string
-}
-
-func (s *saver) Save(ctx context.Context, key string, url string) error {
-	s.store[key] = url
-	return nil
-}
-
 func router(handlerRedirect http.HandlerFunc) {
 	http.HandleFunc("/", handlerRedirect)
 }
