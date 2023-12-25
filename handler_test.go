@@ -1,9 +1,11 @@
 package urlshort
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -176,4 +178,94 @@ func TestJSONHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+type mockSaver struct{}
+
+func (m *mockSaver) Save(ctx context.Context, key string, url string) error {
+	return nil
+}
+
+type mockSaverError struct{}
+
+func (m *mockSaverError) Save(ctx context.Context, key string, url string) error {
+	return fmt.Errorf("something happened")
+}
+
+func TestShortener(t *testing.T) {
+	tests := map[string]struct {
+		URL        string
+		Method     string
+		response   string
+		statusCode int
+	}{
+		"valid URL with scheme": {
+			URL:        "http://google.com",
+			Method:     "POST",
+			statusCode: http.StatusOK,
+		},
+		"valid URL full": {
+			URL:        "http://www.google.com",
+			Method:     "POST",
+			statusCode: http.StatusOK,
+		},
+		"invalid URL": {
+			URL:        "google",
+			Method:     "POST",
+			response:   "invalid URL",
+			statusCode: http.StatusBadRequest,
+		},
+		"invalid URL relative path": {
+			URL:        "google.com",
+			Method:     "POST",
+			response:   "invalid URL",
+			statusCode: http.StatusBadRequest,
+		},
+		"empty URL": {
+			URL:        "",
+			Method:     "POST",
+			response:   "URL parameter is missing",
+			statusCode: http.StatusBadRequest,
+		},
+		"invalid method": {
+			URL:        "http://www.google.com",
+			Method:     "GET",
+			response:   "Invalid request method",
+			statusCode: http.StatusMethodNotAllowed,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler := Shortener(&mockSaver{})
+			req, err := http.NewRequest(tc.Method, fmt.Sprintf("/shorten?url=%s", tc.URL), nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler(rr, req)
+			if status := rr.Code; status != tc.statusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.statusCode)
+			}
+			if rr.Code != http.StatusOK {
+				if strings.TrimSpace(rr.Body.String()) != tc.response {
+					t.Errorf("handler returned unexpected body: got %v want %v",
+						rr.Body.String(), tc.response)
+				}
+			}
+		})
+	}
+
+	t.Run("error saving url shortened", func(t *testing.T) {
+		handler := Shortener(&mockSaverError{})
+		req, err := http.NewRequest("POST", fmt.Sprintf("/shorten?url=%s", "http://www.google.com"), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rr := httptest.NewRecorder()
+		handler(rr, req)
+		if status := rr.Code; status != http.StatusInternalServerError {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
+		}
+	})
 }

@@ -27,20 +27,20 @@ func main() {
 
 	// fallback
 	mux := defaultMux()
-	var handler http.HandlerFunc
+	var handlerRedirect http.HandlerFunc
 	if filedata.isYAML {
-		handler, err = urlshort.YAMLHandler(filedata.data, mux)
+		handlerRedirect, err = urlshort.YAMLHandler(filedata.data, mux)
 		if err != nil {
 			log.Fatal(err)
 		}
 	} else if filedata.isJSON {
-		handler, err = urlshort.JSONHandler(filedata.data, mux)
+		handlerRedirect, err = urlshort.JSONHandler(filedata.data, mux)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
-	router(handler)
+	router(handlerRedirect)
 	startServer(*listenAddress)
 }
 
@@ -96,8 +96,17 @@ func readFile(yaml, json *string) (*fileData, error) {
 	return &filedata, nil
 }
 
-func router(handler http.HandlerFunc) {
-	http.HandleFunc("/", handler)
+type saver struct {
+	store map[string]string
+}
+
+func (s *saver) Save(ctx context.Context, key string, url string) error {
+	s.store[key] = url
+	return nil
+}
+
+func router(handlerRedirect http.HandlerFunc) {
+	http.HandleFunc("/", handlerRedirect)
 }
 
 func startServer(listenAddress string) {

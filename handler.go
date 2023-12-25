@@ -1,10 +1,15 @@
+// Package urlshort provides functions to implement a small server with urlshortener functionalities
 package urlshort
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -29,7 +34,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 	}
 }
 
-type URLMapper struct {
+type uRLMapper struct {
 	Path string `yaml:"path" json:"path"`
 	URL  string `yaml:"url" json:"url"`
 }
@@ -51,7 +56,7 @@ type URLMapper struct {
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	var mappers []URLMapper
+	var mappers []uRLMapper
 	err := yaml.Unmarshal(yml, &mappers)
 	if err != nil {
 		return nil, err
@@ -90,7 +95,7 @@ func YAMLHandler(yml []byte, fallback http.Handler) (http.HandlerFunc, error) {
 // See MapHandler to create a similar http.HandlerFunc via
 // a mapping of paths to urls.
 func JSONHandler(data []byte, fallback http.Handler) (http.HandlerFunc, error) {
-	var mappers []URLMapper
+	var mappers []uRLMapper
 	err := json.Unmarshal(data, &mappers)
 	if err != nil {
 		return nil, err
@@ -102,7 +107,7 @@ func JSONHandler(data []byte, fallback http.Handler) (http.HandlerFunc, error) {
 	return MapHandler(pathMap, fallback), nil
 }
 
-func buildMap(mappers []URLMapper) (map[string]string, error) {
+func buildMap(mappers []uRLMapper) (map[string]string, error) {
 	mapOutput := make(map[string]string)
 	var ok bool
 	for _, mapper := range mappers {
@@ -112,4 +117,72 @@ func buildMap(mappers []URLMapper) (map[string]string, error) {
 		mapOutput[mapper.Path] = mapper.URL
 	}
 	return mapOutput, nil
+}
+
+const htmlShortenResponse = `
+<h2>URL Shortener</h2>
+<p>Original URL: %s</p>
+<p>Shortened URL: <a href="%s">%s</a></p>
+<form method="post" action="/shorten">
+	<input type="text" name="url" placeholder="Enter a URL">
+	<input type="submit" value="Shorten">
+</form>
+`
+
+// UrlShortSaver defines a contract for types that know how to save a shortened URL key.
+// Types implementing this interface must provide a Save method that takes a string representing the key
+// and returns an error if the operation fails.
+type UrlShortSaver interface {
+	// Save is a method that takes a string key representing the URL to be saved.
+	// It attempts to save the key and returns an error if the operation fails.
+	Save(ctx context.Context, key string, url string) error
+}
+
+// Shortener generates an HTTP handler that accepts POST requests containing a URL.
+// It then generates a shortened key for the provided URL and saves it using the provided Saver.
+// The generated shortened URL is displayed in the HTML response along with the original URL.
+func Shortener(saver UrlShortSaver) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
+
+		originalURL := r.FormValue("url")
+		if originalURL == "" {
+			http.Error(w, "URL parameter is missing", http.StatusBadRequest)
+			return
+		}
+
+		_, err := url.ParseRequestURI(originalURL)
+		if err != nil {
+			http.Error(w, "invalid URL", http.StatusBadRequest)
+			return
+		}
+
+		shortKey := generateShortKey()
+		if err = saver.Save(r.Context(), shortKey, originalURL); err != nil {
+			http.Error(w, "error saving short url", http.StatusInternalServerError)
+			return
+		}
+
+		shortenedURL := fmt.Sprintf("http://%s:%s/short/%s", r.URL.Host, r.URL.Port(), shortKey)
+
+		w.Header().Set("Content-Type", "text/html")
+		responseHTML := fmt.Sprintf(htmlShortenResponse, originalURL, shortenedURL, shortenedURL)
+		fmt.Fprintf(w, responseHTML)
+	}
+}
+
+func generateShortKey() string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const keyLength = 6
+
+	source := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(source)
+	shortKey := make([]byte, keyLength)
+	for i := range shortKey {
+		shortKey[i] = charset[rng.Intn(len(charset))]
+	}
+	return string(shortKey)
 }
