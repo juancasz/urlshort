@@ -4,6 +4,7 @@ package urlshort
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/rand"
 	"net/http"
@@ -185,4 +186,39 @@ func generateShortKey() string {
 		shortKey[i] = charset[rng.Intn(len(charset))]
 	}
 	return string(shortKey)
+}
+
+// UrlShortGetter defines a contract for types that know how to redirect a shortened URL key.
+// Types implementing this interface must provide a Get method that takes a string representing the key
+// and returns the url to which some request must be redirected.
+type UrlShortGetter interface {
+	// Get is a method that takes a string key representing the shortened URL and returns the original url
+	// to which some request must be redirected
+	Get(ctx context.Context, key string) (string, error)
+}
+
+var ErrMissingKey = errors.New("key not found")
+
+// ShortenerHandler will return an http.HandlerFunc (which also
+// implements http.Handler) that will attempt to map any
+// paths (keys) to their corresponding URL (values
+// that UrlShortGetter retrieves, in string format).
+// If the path is not provided in the map, then the fallback
+// http.Handler will be called instead.
+func ShortenerHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
+		redirectUrl, err := getter.Get(r.Context(), strings.TrimRight(r.URL.Path, "/ "))
+		if errors.Is(err, ErrMissingKey) {
+			fallback.ServeHTTP(w, r)
+		}
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(w, r, redirectUrl, 301)
+	}
 }
