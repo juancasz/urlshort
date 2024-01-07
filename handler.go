@@ -121,13 +121,60 @@ func buildMap(mappers []uRLMapper) (map[string]string, error) {
 }
 
 const htmlShortenResponse = `
-<h2>URL Shortener</h2>
-<p>Original URL: %s</p>
-<p>Shortened URL: <a href="%s">%s</a></p>
-<form method="post" action="/shorten">
-	<input type="text" name="url" placeholder="Enter a URL">
-	<input type="submit" value="Shorten">
-</form>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <title>URL Shortener</title>
+   <style>
+       body {
+           font-family: Arial, sans-serif;
+           background-color: #f5f5f5;
+           padding: 20px;
+       }
+       h2 {
+           color: #333;
+           text-align: center;
+       }
+       p {
+           color: #666;
+           font-size: 1.2em;
+           font-weight: bold;
+           padding: 10px 0;
+       }
+       a {
+           color: #0066cc;
+           text-decoration: none;
+       }
+       form {
+           display: flex;
+           justify-content: center;
+           margin-top: 20px;
+       }
+       input[type="text"] {
+           padding: 10px;
+           border-radius: 5px;
+           border: 1px solid #ddd;
+       }
+       input[type="submit"] {
+           margin-left: 10px;
+           padding: 10px 20px;
+           border-radius: 5px;
+           border: 1px solid #ddd;
+           background-color: #0066cc;
+           color: #fff;
+       }
+   </style>
+</head>
+<body>
+   <h2>URL Shortener</h2>
+   <p>Original URL: %s</p>
+   <p>Shortened URL: <a href="%s">%s</a></p>
+   <form method="post" action="/shorten">
+       <input type="text" name="url" placeholder="Enter a URL">
+       <input type="submit" value="Shorten">
+   </form>
+</body>
+</html>
 `
 
 // UrlShortSaver defines a contract for types that know how to save a shortened URL key.
@@ -157,13 +204,13 @@ func Shortener(saver UrlShortSaver) http.HandlerFunc {
 
 		_, err := url.ParseRequestURI(originalURL)
 		if err != nil {
-			http.Error(w, "invalid URL", http.StatusBadRequest)
+			http.Error(w, fmt.Sprintf("invalid URL: %s", err.Error()), http.StatusBadRequest)
 			return
 		}
 
 		shortKey := generateShortKey()
 		if err = saver.Save(r.Context(), shortKey, originalURL); err != nil {
-			http.Error(w, "error saving short url", http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error saving short url: %s", err.Error()), http.StatusInternalServerError)
 			return
 		}
 
