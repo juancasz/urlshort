@@ -3,6 +3,7 @@ package redis
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 	"urlshort"
 
@@ -15,7 +16,9 @@ type client struct {
 }
 
 type Options struct {
-	Addr              string
+	Host              string
+	Port              string
+	Username          string
 	Password          string
 	DB                int
 	ExpirationMinutes int
@@ -23,7 +26,8 @@ type Options struct {
 
 func New(opts *Options) *client {
 	r := redis.NewClient(&redis.Options{
-		Addr:     opts.Addr,
+		Addr:     fmt.Sprintf("%s:%s", opts.Host, opts.Port),
+		Username: opts.Username,
 		Password: opts.Password,
 		DB:       opts.DB,
 	})

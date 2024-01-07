@@ -246,13 +246,13 @@ type UrlShortGetter interface {
 
 var ErrMissingKey = errors.New("key not found")
 
-// ShortenerHandler will return an http.HandlerFunc (which also
+// RetrieveHandler will return an http.HandlerFunc (which also
 // implements http.Handler) that will attempt to map any
 // paths (keys) to their corresponding URL (values
 // that UrlShortGetter retrieves, in string format).
 // If the path is not provided in the map, then the fallback
 // http.Handler will be called instead.
-func ShortenerHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerFunc {
+func RetrieveHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
