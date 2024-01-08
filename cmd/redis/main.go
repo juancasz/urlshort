@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,52 +23,24 @@ func main() {
 		ExpirationMinutes: expirationMinutes,
 	})
 
-	shortenerHandler := urlshort.Shortener(storage)
-	retrieverHandler := urlshort.RetrieveHandler(storage, defaultMux())
+	shortenerHandler := urlshort.Shortener(storage, os.Getenv("HOST"), invalidUrlMux())
+	retrieverHandler := urlshort.RetrieveHandler(storage, missingUrlMux())
 
+	http.HandleFunc("/home", urlshort.ShortenerHome)
 	http.HandleFunc("/shorten", shortenerHandler)
-	http.HandleFunc("/", retrieverHandler)
+	http.HandleFunc("/short/", retrieverHandler)
 	svr := server.New(os.Getenv("PORT"))
 	svr.Start()
 }
 
-func defaultMux() *http.ServeMux {
+func missingUrlMux() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", fallback)
+	mux.HandleFunc("/", urlshort.MissingUrlHandler)
 	return mux
 }
 
-const fallbackTemplate = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
- <meta charset="UTF-8">
- <title>URL Not Found</title>
- <style>
-     body {
-         font-family: Arial, sans-serif;
-         background-color: #f5f5f5;
-         padding: 20px;
-         text-align: center;
-     }
-     h1 {
-         color: #333;
-         font-size: 2.5em;
-     }
-     p {
-         color: #666;
-         font-size: 1.2em;
-         padding: 20px 0;
-     }
- </style>
-</head>
-<body>
- <h1>404</h1>
- <p>The URL you entered is not available.</p>
-</body>
-</html>
-`
-
-func fallback(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, fallbackTemplate)
+func invalidUrlMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", urlshort.InvalidUrlHandler)
+	return mux
 }

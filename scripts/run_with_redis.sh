@@ -1,4 +1,5 @@
 #!/bin/sh
+export HOST=http://localhost:8080
 export PORT=8080
 export REDIS_HOST=localhost
 export REDIS_PORT=6379

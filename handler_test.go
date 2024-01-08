@@ -192,6 +192,10 @@ func (m *mockSaverError) Save(ctx context.Context, key string, url string) error
 	return fmt.Errorf("something happened")
 }
 
+func statusBadRequestHandlerMock(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "Bad Request", http.StatusBadRequest)
+}
+
 func TestShortener(t *testing.T) {
 	tests := map[string]struct {
 		URL        string
@@ -212,13 +216,11 @@ func TestShortener(t *testing.T) {
 		"invalid URL": {
 			URL:        "google",
 			Method:     "POST",
-			response:   "invalid URL",
 			statusCode: http.StatusBadRequest,
 		},
 		"invalid URL relative path": {
 			URL:        "google.com",
 			Method:     "POST",
-			response:   "invalid URL",
 			statusCode: http.StatusBadRequest,
 		},
 		"empty URL": {
@@ -237,7 +239,7 @@ func TestShortener(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := Shortener(&mockSaver{})
+			handler := Shortener(&mockSaver{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 			req, err := http.NewRequest(tc.Method, fmt.Sprintf("/shorten?url=%s", tc.URL), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -247,7 +249,7 @@ func TestShortener(t *testing.T) {
 			if status := rr.Code; status != tc.statusCode {
 				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.statusCode)
 			}
-			if rr.Code != http.StatusOK {
+			if rr.Code != http.StatusOK && tc.response != "" {
 				if strings.TrimSpace(rr.Body.String()) != tc.response {
 					t.Errorf("handler returned unexpected body: got %v want %v",
 						rr.Body.String(), tc.response)
@@ -257,7 +259,7 @@ func TestShortener(t *testing.T) {
 	}
 
 	t.Run("error saving url shortened", func(t *testing.T) {
-		handler := Shortener(&mockSaverError{})
+		handler := Shortener(&mockSaverError{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 		req, err := http.NewRequest("POST", fmt.Sprintf("/shorten?url=%s", "http://www.google.com"), nil)
 		if err != nil {
 			t.Fatal(err)

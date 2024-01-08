@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"math/rand"
 	"net/http"
 	"net/url"
@@ -120,63 +121,6 @@ func buildMap(mappers []uRLMapper) (map[string]string, error) {
 	return mapOutput, nil
 }
 
-const htmlShortenResponse = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-   <title>URL Shortener</title>
-   <style>
-       body {
-           font-family: Arial, sans-serif;
-           background-color: #f5f5f5;
-           padding: 20px;
-       }
-       h2 {
-           color: #333;
-           text-align: center;
-       }
-       p {
-           color: #666;
-           font-size: 1.2em;
-           font-weight: bold;
-           padding: 10px 0;
-       }
-       a {
-           color: #0066cc;
-           text-decoration: none;
-       }
-       form {
-           display: flex;
-           justify-content: center;
-           margin-top: 20px;
-       }
-       input[type="text"] {
-           padding: 10px;
-           border-radius: 5px;
-           border: 1px solid #ddd;
-       }
-       input[type="submit"] {
-           margin-left: 10px;
-           padding: 10px 20px;
-           border-radius: 5px;
-           border: 1px solid #ddd;
-           background-color: #0066cc;
-           color: #fff;
-       }
-   </style>
-</head>
-<body>
-   <h2>URL Shortener</h2>
-   <p>Original URL: %s</p>
-   <p>Shortened URL: <a href="%s">%s</a></p>
-   <form method="post" action="/shorten">
-       <input type="text" name="url" placeholder="Enter a URL">
-       <input type="submit" value="Shorten">
-   </form>
-</body>
-</html>
-`
-
 // UrlShortSaver defines a contract for types that know how to save a shortened URL key.
 // Types implementing this interface must provide a Save method that takes a string representing the key
 // and returns an error if the operation fails.
@@ -189,7 +133,7 @@ type UrlShortSaver interface {
 // Shortener generates an HTTP handler that accepts POST requests containing a URL.
 // It then generates a shortened key for the provided URL and saves it using the provided Saver.
 // The generated shortened URL is displayed in the HTML response along with the original URL.
-func Shortener(saver UrlShortSaver) http.HandlerFunc {
+func Shortener(saver UrlShortSaver, host string, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
@@ -204,21 +148,34 @@ func Shortener(saver UrlShortSaver) http.HandlerFunc {
 
 		_, err := url.ParseRequestURI(originalURL)
 		if err != nil {
-			http.Error(w, fmt.Sprintf("invalid URL: %s", err.Error()), http.StatusBadRequest)
+			fallback.ServeHTTP(w, r)
 			return
 		}
 
 		shortKey := generateShortKey()
 		if err = saver.Save(r.Context(), shortKey, originalURL); err != nil {
-			http.Error(w, fmt.Sprintf("error saving short url: %s", err.Error()), http.StatusInternalServerError)
+			http.Error(w, fmt.Sprintf("error saving short url"), http.StatusInternalServerError)
 			return
 		}
 
-		shortenedURL := fmt.Sprintf("http://%s:%s/short/%s", r.URL.Host, r.URL.Port(), shortKey)
+		shortenedURL := fmt.Sprintf("%s/short/%s", host, shortKey)
 
-		w.Header().Set("Content-Type", "text/html")
-		responseHTML := fmt.Sprintf(htmlShortenResponse, originalURL, shortenedURL, shortenedURL)
-		fmt.Fprintf(w, responseHTML)
+		tmpl, err := template.ParseFiles("html/shorten.html")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if err = tmpl.Execute(w, struct {
+			OriginalUrl string
+			ShortUrl    string
+		}{
+			OriginalUrl: originalURL,
+			ShortUrl:    shortenedURL,
+		}); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -252,20 +209,68 @@ var ErrMissingKey = errors.New("key not found")
 // that UrlShortGetter retrieves, in string format).
 // If the path is not provided in the map, then the fallback
 // http.Handler will be called instead.
+// Handler must be attached to route /short/ or it won't work properly
 func RetrieveHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-		redirectUrl, err := getter.Get(r.Context(), strings.TrimRight(r.URL.Path, "/ "))
+		key := strings.TrimPrefix(r.URL.Path, "/short/")
+		redirectUrl, err := getter.Get(r.Context(), key)
 		if errors.Is(err, ErrMissingKey) {
 			fallback.ServeHTTP(w, r)
+			return
 		}
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(w, r, redirectUrl, 301)
+	}
+}
+
+// ShortenerHome returns home page for shortener website
+func ShortenerHome(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tmpl, err := template.ParseFiles("html/home.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err = tmpl.Execute(w, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// MissingUrlHandler returns page when key not found
+func MissingUrlHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("html/fallback.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = tmpl.Execute(w, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// InvalidUrlHandler returns page when url not valid
+func InvalidUrlHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("html/error.html")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err = tmpl.Execute(w, nil); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }
