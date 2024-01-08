@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <title>URL Shortener</title>
+   <style>
+       body {
+           font-family: Arial, sans-serif;
+           background-color: #f5f5f5;
+           padding: 20px;
+       }
+       h2 {
+           color: #333;
+           text-align: center;
+       }
+       p {
+           color: #666;
+           font-size: 1.2em;
+           font-weight: bold;
+           padding: 10px 0;
+       }
+       a {
+           color: #0066cc;
+           text-decoration: none;
+       }
+       form {
+           display: flex;
+           justify-content: center;
+           margin-top: 20px;
+       }
+       input[type="text"] {
+           padding: 10px;
+           border-radius: 5px;
+           border: 1px solid #ddd;
+       }
+       input[type="submit"] {
+           margin-left: 10px;
+           padding: 10px 20px;
+           border-radius: 5px;
+           border: 1px solid #ddd;
+           background-color: #0066cc;
+           color: #fff;
+       }
+   </style>
+</head>
+<body>
+   <h2>URL Shortener</h2>
+   <p>Please enter a valid URL starting with 'http://' or 'https://'</p>
+   <p style="color:red;">Invalid URL</p>
+   <form method="post" action="/shorten">
+       <input type="text" name="url" placeholder="Enter a URL">
+       <input type="submit" value="Shorten">
+   </form>
+</body>
+</html>
