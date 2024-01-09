@@ -29,7 +29,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 			return
 		}
 		if redirectUrl, ok := pathsToUrls[strings.TrimRight(r.URL.Path, "/ ")]; ok {
-			http.Redirect(w, r, redirectUrl, 301)
+			http.Redirect(w, r, redirectUrl, http.StatusMovedPermanently)
 			return
 		}
 		fallback.ServeHTTP(w, r)
@@ -230,7 +230,7 @@ func RetrieveHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerF
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, redirectUrl, 301)
+		http.Redirect(w, r, redirectUrl, http.StatusMovedPermanently)
 	}
 }
 

@@ -2,6 +2,7 @@ package urlshort
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -272,9 +273,74 @@ func TestShortener(t *testing.T) {
 	})
 }
 
-func TestRetrieveHandler(t *testing.T) {
-	// tests := map[string]struct{
-	// 	method string
+type mockGetter struct{}
 
-	// }
+func (m *mockGetter) Get(ctx context.Context, key string) (string, error) {
+	return "http://www.google.com", nil
+}
+
+type mockGetterMissingKey struct{}
+
+func (m *mockGetterMissingKey) Get(ctx context.Context, key string) (string, error) {
+	return "", ErrMissingKey
+}
+
+type mockGetterError struct{}
+
+func (m *mockGetterError) Get(ctx context.Context, key string) (string, error) {
+	return "", errors.New("some error")
+}
+
+func TestRetrieveHandler(t *testing.T) {
+	tests := map[string]struct {
+		method     string
+		path       string
+		getter     UrlShortGetter
+		fallback   http.Handler
+		statusCode int
+	}{
+		"correct retrieve": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetter{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusMovedPermanently,
+		},
+		"invalid method": {
+			method:     "POST",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetter{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusMethodNotAllowed,
+		},
+		"missing key": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetterMissingKey{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusBadRequest,
+		},
+		"error getting key": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetterError{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler := RetrieveHandler(tc.getter, tc.fallback)
+			req, err := http.NewRequest(tc.method, tc.path, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler(rr, req)
+			if status := rr.Code; status != tc.statusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.statusCode)
+			}
+		})
+	}
 }
