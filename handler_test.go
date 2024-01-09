@@ -271,3 +271,10 @@ func TestShortener(t *testing.T) {
 		}
 	})
 }
+
+func TestRetrieveHandler(t *testing.T) {
+	// tests := map[string]struct{
+	// 	method string
+
+	// }
+}
