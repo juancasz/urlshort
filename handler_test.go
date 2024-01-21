@@ -1,4 +1,4 @@
-package urlshort
+package urlshort_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"urlshort"
 )
 
 func TestMapHandler(t *testing.T) {
@@ -53,7 +54,7 @@ func TestMapHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := MapHandler(tc.pathsToUrls, tc.fallback)
+			handler := urlshort.MapHandler(tc.pathsToUrls, tc.fallback)
 			req, err := http.NewRequest("GET", tc.requestPath, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -71,7 +72,7 @@ func TestMapHandler(t *testing.T) {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Hello, world!")
 		})
-		handler := MapHandler(map[string]string{
+		handler := urlshort.MapHandler(map[string]string{
 			"/urlshort":       "https://github.com/gophercises/urlshort",
 			"/urlshort-final": "https://github.com/gophercises/urlshort/tree/solution",
 		}, mux)
@@ -114,7 +115,7 @@ func TestYAMLHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler, err := YAMLHandler(tc.yml, tc.fallback)
+			handler, err := urlshort.YAMLHandler(tc.yml, tc.fallback)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -164,7 +165,7 @@ func TestJSONHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler, err := JSONHandler(tc.json, tc.fallback)
+			handler, err := urlshort.JSONHandler(tc.json, tc.fallback)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -240,7 +241,7 @@ func TestShortener(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := Shortener(&mockSaver{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
+			handler := urlshort.Shortener(&mockSaver{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 			req, err := http.NewRequest(tc.Method, fmt.Sprintf("/shorten?url=%s", tc.URL), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -260,7 +261,7 @@ func TestShortener(t *testing.T) {
 	}
 
 	t.Run("error saving url shortened", func(t *testing.T) {
-		handler := Shortener(&mockSaverError{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
+		handler := urlshort.Shortener(&mockSaverError{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 		req, err := http.NewRequest("POST", fmt.Sprintf("/shorten?url=%s", "http://www.google.com"), nil)
 		if err != nil {
 			t.Fatal(err)
@@ -282,7 +283,7 @@ func (m *mockGetter) Get(ctx context.Context, key string) (string, error) {
 type mockGetterMissingKey struct{}
 
 func (m *mockGetterMissingKey) Get(ctx context.Context, key string) (string, error) {
-	return "", ErrMissingKey
+	return "", urlshort.ErrMissingKey
 }
 
 type mockGetterError struct{}
@@ -295,7 +296,7 @@ func TestRetrieveHandler(t *testing.T) {
 	tests := map[string]struct {
 		method     string
 		path       string
-		getter     UrlShortGetter
+		getter     urlshort.UrlShortGetter
 		fallback   http.Handler
 		statusCode int
 	}{
@@ -331,7 +332,7 @@ func TestRetrieveHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := RetrieveHandler(tc.getter, tc.fallback)
+			handler := urlshort.RetrieveHandler(tc.getter, tc.fallback)
 			req, err := http.NewRequest(tc.method, tc.path, nil)
 			if err != nil {
 				t.Fatal(err)
