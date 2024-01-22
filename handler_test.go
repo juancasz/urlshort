@@ -1,12 +1,14 @@
-package urlshort
+package urlshort_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"urlshort"
 )
 
 func TestMapHandler(t *testing.T) {
@@ -52,7 +54,7 @@ func TestMapHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := MapHandler(tc.pathsToUrls, tc.fallback)
+			handler := urlshort.MapHandler(tc.pathsToUrls, tc.fallback)
 			req, err := http.NewRequest("GET", tc.requestPath, nil)
 			if err != nil {
 				t.Fatal(err)
@@ -70,7 +72,7 @@ func TestMapHandler(t *testing.T) {
 		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintln(w, "Hello, world!")
 		})
-		handler := MapHandler(map[string]string{
+		handler := urlshort.MapHandler(map[string]string{
 			"/urlshort":       "https://github.com/gophercises/urlshort",
 			"/urlshort-final": "https://github.com/gophercises/urlshort/tree/solution",
 		}, mux)
@@ -113,7 +115,7 @@ func TestYAMLHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler, err := YAMLHandler(tc.yml, tc.fallback)
+			handler, err := urlshort.YAMLHandler(tc.yml, tc.fallback)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -163,7 +165,7 @@ func TestJSONHandler(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler, err := JSONHandler(tc.json, tc.fallback)
+			handler, err := urlshort.JSONHandler(tc.json, tc.fallback)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -239,7 +241,7 @@ func TestShortener(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			handler := Shortener(&mockSaver{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
+			handler := urlshort.Shortener(&mockSaver{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 			req, err := http.NewRequest(tc.Method, fmt.Sprintf("/shorten?url=%s", tc.URL), nil)
 			if err != nil {
 				t.Fatal(err)
@@ -259,7 +261,7 @@ func TestShortener(t *testing.T) {
 	}
 
 	t.Run("error saving url shortened", func(t *testing.T) {
-		handler := Shortener(&mockSaverError{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
+		handler := urlshort.Shortener(&mockSaverError{}, "http://localhost:8080", http.HandlerFunc(statusBadRequestHandlerMock))
 		req, err := http.NewRequest("POST", fmt.Sprintf("/shorten?url=%s", "http://www.google.com"), nil)
 		if err != nil {
 			t.Fatal(err)
@@ -270,4 +272,76 @@ func TestShortener(t *testing.T) {
 			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusInternalServerError)
 		}
 	})
+}
+
+type mockGetter struct{}
+
+func (m *mockGetter) Get(ctx context.Context, key string) (string, error) {
+	return "http://www.google.com", nil
+}
+
+type mockGetterMissingKey struct{}
+
+func (m *mockGetterMissingKey) Get(ctx context.Context, key string) (string, error) {
+	return "", urlshort.ErrMissingKey
+}
+
+type mockGetterError struct{}
+
+func (m *mockGetterError) Get(ctx context.Context, key string) (string, error) {
+	return "", errors.New("some error")
+}
+
+func TestRetrieveHandler(t *testing.T) {
+	tests := map[string]struct {
+		method     string
+		path       string
+		getter     urlshort.UrlShortGetter
+		fallback   http.Handler
+		statusCode int
+	}{
+		"correct retrieve": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetter{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusMovedPermanently,
+		},
+		"invalid method": {
+			method:     "POST",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetter{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusMethodNotAllowed,
+		},
+		"missing key": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetterMissingKey{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusBadRequest,
+		},
+		"error getting key": {
+			method:     "GET",
+			path:       "/short/CSl5Ow",
+			getter:     &mockGetterError{},
+			fallback:   http.HandlerFunc(statusBadRequestHandlerMock),
+			statusCode: http.StatusInternalServerError,
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			handler := urlshort.RetrieveHandler(tc.getter, tc.fallback)
+			req, err := http.NewRequest(tc.method, tc.path, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			rr := httptest.NewRecorder()
+			handler(rr, req)
+			if status := rr.Code; status != tc.statusCode {
+				t.Errorf("handler returned wrong status code: got %v want %v", status, tc.statusCode)
+			}
+		})
+	}
 }

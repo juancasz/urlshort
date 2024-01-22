@@ -29,7 +29,7 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 			return
 		}
 		if redirectUrl, ok := pathsToUrls[strings.TrimRight(r.URL.Path, "/ ")]; ok {
-			http.Redirect(w, r, redirectUrl, 301)
+			http.Redirect(w, r, redirectUrl, http.StatusMovedPermanently)
 			return
 		}
 		fallback.ServeHTTP(w, r)
@@ -131,7 +131,7 @@ type UrlShortSaver interface {
 }
 
 // Shortener generates an HTTP handler that accepts POST requests containing a URL.
-// It then generates a shortened key for the provided URL and saves it using the provided Saver.
+// It then generates a shortened key for the provided URL and saves it using the provided saver.
 // The generated shortened URL is displayed in the HTML response along with the original URL.
 func Shortener(saver UrlShortSaver, host string, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -204,20 +204,24 @@ type UrlShortGetter interface {
 var ErrMissingKey = errors.New("key not found")
 
 // RetrieveHandler will return an http.HandlerFunc (which also
-// implements http.Handler) that will attempt to map any
+// implements http.Handler) that will attempt to redirect any
 // paths (keys) to their corresponding URL (values
 // that UrlShortGetter retrieves, in string format).
-// If the path is not provided in the map, then the fallback
+// If the key is not found by getter, then the fallback
 // http.Handler will be called instead.
-// Handler must be attached to route /short/ or it won't work properly
+// Handler must be attached to route /anypath/{key} or it won't work properly
 func RetrieveHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
 			return
 		}
-		key := strings.TrimPrefix(r.URL.Path, "/short/")
-		redirectUrl, err := getter.Get(r.Context(), key)
+		paths := strings.SplitN(strings.Trim(r.URL.Path, "/ "), "/", 2)
+		if len(paths) != 2 {
+			http.NotFound(w, r)
+			return
+		}
+		redirectUrl, err := getter.Get(r.Context(), paths[1])
 		if errors.Is(err, ErrMissingKey) {
 			fallback.ServeHTTP(w, r)
 			return
@@ -226,7 +230,7 @@ func RetrieveHandler(getter UrlShortGetter, fallback http.Handler) http.HandlerF
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		http.Redirect(w, r, redirectUrl, 301)
+		http.Redirect(w, r, redirectUrl, http.StatusMovedPermanently)
 	}
 }
 
