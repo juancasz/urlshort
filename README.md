@@ -17,6 +17,7 @@ This application is designed as an URL shortener. It operates by either acceptin
 - [Tests](#tests)
     - [Unit Tests](#unit-tests)
     - [Integration Tests](#integration-tests)
+- [Package Documentation](./package_docs.md)
 
 ### Usage
 This section provides instructions on how to operate the application locally under various conditions. The following software is required on your machine:
@@ -123,5 +124,3 @@ make integration_tests
 ```
 
 Note that Docker is required to run integration tests. This is because the external storage, which is Redis running as a container, needs to be active during the tests
-
-
