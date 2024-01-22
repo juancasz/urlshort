@@ -7,6 +7,26 @@ My solutions to https://github.com/gophercises/urlshort
 
 This application is designed as an URL shortener. It operates by either accepting a JSON or YAML file that contains mappings between shortened URLs and their actual destinations, or by utilizing an external storage system to store these mappings.
 
+The application makes use of the package [urlshort](./handler.go) in this same repository.
+
+To run the application by accepting JSON or YAML files, the following functions are used:
+
+- [func JSONHandler\(data \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-jsonhandler)
+- [func MapHandler\(pathsToUrls map\[string\]string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-maphandler)
+- [func YAMLHandler\(yml \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-yamlhandler)
+
+To run the application by utilizing an external srotage system, the following functions are used:
+- [func Shortener\(saver UrlShortSaver, host string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-shortener)
+- [func RetrieveHandler\(getter UrlShortGetter, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-retrievehandler)
+- [func ShortenerHome\(w http.ResponseWriter, r \*http.Request\)](package_docs.md#func-shortenerhome)
+- [func MissingUrlHandler\(w http.ResponseWriter, r \*http.Request\)](package_docs.md#func-missingurlhandler)
+- [func InvalidUrlHandler\(w http.ResponseWriter, r \*http.Request\)](package_docs.md#func-invalidurlhandler)
+
+Any external storage service can be used and it must implement the following interfaces:
+
+- [type UrlShortGetter](package_docs.md#type-urlshortgetter)
+- [type UrlShortSaver](package_docs.md#type-urlshortsaver)
+
 ## Index
 - [Usage](#usage)
     - [File-Based Configuration](#file-based-configuration)
