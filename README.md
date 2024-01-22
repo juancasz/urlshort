@@ -7,7 +7,7 @@ My solutions to https://github.com/gophercises/urlshort
 
 This application is designed as an URL shortener. It operates by either accepting a JSON or YAML file that contains mappings between shortened URLs and their actual destinations, or by utilizing an external storage system to store these mappings.
 
-The application makes use of the package [urlshort](./handler.go) in this same repository.
+The application makes use of the package [urlshort](./handler.go) located in this same repository.
 
 To run the application by accepting JSON or YAML files, the following functions are used:
 
@@ -15,7 +15,7 @@ To run the application by accepting JSON or YAML files, the following functions 
 - [func MapHandler\(pathsToUrls map\[string\]string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-maphandler)
 - [func YAMLHandler\(yml \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-yamlhandler)
 
-To run the application by utilizing an external srotage system, the following functions are used:
+To run the application by utilizing an external storage system, the following functions are used:
 - [func Shortener\(saver UrlShortSaver, host string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-shortener)
 - [func RetrieveHandler\(getter UrlShortGetter, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-retrievehandler)
 - [func ShortenerHome\(w http.ResponseWriter, r \*http.Request\)](package_docs.md#func-shortenerhome)
