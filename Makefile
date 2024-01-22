@@ -1,6 +1,3 @@
-run_with_file:
-	go run cmd/file/main.go -yaml=$(YAML) -json=$(JSON)
-
 run_with_redis:
 	sh scripts/run_with_redis.sh
 
