@@ -12,8 +12,8 @@ The application makes use of the package [urlshort](./handler.go) located in thi
 To run the application by accepting JSON or YAML files, the following functions are used:
 
 - [func JSONHandler\(data \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-jsonhandler)
-- [func MapHandler\(pathsToUrls map\[string\]string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-maphandler)
 - [func YAMLHandler\(yml \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-yamlhandler)
+- [func MapHandler\(pathsToUrls map\[string\]string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-maphandler)
 
 To run the application by utilizing an external storage system, the following functions are used:
 - [func Shortener\(saver UrlShortSaver, host string, fallback http.Handler\) http.HandlerFunc](package_docs.md#func-shortener)
@@ -110,6 +110,8 @@ You can customize the server port by executing:
 go run cmd/file/main.go -json=$(JSON) -yaml=$(YAML) -listen=$(PORT)
 ```
 
+The server then will redirect requests according to the data provided in the file. Requests to `/urlshort` will be redirected to `https://github.com/gophercises/urlshort`, for instance.
+
 #### Redis
 The application also supports operation through an external storage service, where mappings between shortened URLs and their actual destinations can be stored. 
 
@@ -119,7 +121,13 @@ To operate the application using Redis as the external service, execute the foll
 make run_with_redis
 ```
 
-This command will start the application and its associated Redis container. Please ensure Docker is installed on your machine, as Redis runs as a Docker container
+This command will start the application at port 8080 and its associated Redis container at port 6379. Please ensure Docker is installed on your machine, as Redis runs as a Docker container
+
+The following screen will appear at `/home`:
+
+![home](images/home-page.png)
+
+Shortened urls can then be generated and used.
 
 To halt the application and its related Redis container, use the following command:
 
