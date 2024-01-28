@@ -2,7 +2,7 @@ name: golang-setup
 
 on:
   push:
-    branches: [ "master", "feature/ci-cd-tests" ]
+    branches: [ "master" ]
 
 jobs:
   tests:

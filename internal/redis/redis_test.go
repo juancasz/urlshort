@@ -41,5 +41,4 @@ func TestSaveAndGet(t *testing.T) {
 	if myRetrievedUrl != myUrl {
 		t.Fatalf("expected url %s but got %s", myUrl, myRetrievedUrl)
 	}
-	t.Fatalf("test failed")
 }
