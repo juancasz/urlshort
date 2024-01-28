@@ -2,7 +2,7 @@ name: golang-setup
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
 
 jobs:
   tests:
