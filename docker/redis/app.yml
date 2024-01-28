@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7.2.3
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+
+  app:
+    container_name: urlshort
+    build:
+      context: ../..
+      dockerfile: ./docker/redis/Dockerfile
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    image: urlshort
+    environment:
+      HOST: http://localhost:8080
+      PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_EXPIRATION_MINUTES: 60
