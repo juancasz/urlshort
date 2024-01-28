@@ -1,0 +1,29 @@
+name: golang-setup
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+    env:
+      REDIS_HOST: localhost
+      REDIS_PORT: 6379
+      REDIS_EXPIRATION_MINUTES: 60
+      RUN_INTEGRATION_TESTS: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.x'
+      - name: Install dependencies
+        run: go mod download
+      - name: Run tests
+        run: go test ./... -coverprofile cover.out && go tool cover -func cover.out
