@@ -38,6 +38,7 @@ Any external storage service can be used and it must implement the following int
     - [Unit Tests](#unit-tests)
     - [Integration Tests](#integration-tests)
 - [Package Documentation](./package_docs.md)
+- [Github Actions](#github-actions)
 
 ### Usage
 This section provides instructions on how to operate the application locally under various conditions. The following software is required on your machine:
@@ -152,3 +153,6 @@ make integration_tests
 ```
 
 Note that Docker is required to run integration tests. This is because the external storage, which is Redis running as a container, needs to be active during the tests
+
+### Github Actions
+CI/CD configured at [golang-setup.yml](.github/workflows/golang-setup.yml)
