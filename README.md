@@ -34,6 +34,7 @@ Any external storage service can be used and it must implement the following int
         - [YAML File Structure](#yaml-file-structure)
         - [Running the Server](#running-the-server)
     - [Redis](#redis)
+    - [Dockerized Application](#dockerized-application)
 - [Tests](#tests)
     - [Unit Tests](#unit-tests)
     - [Integration Tests](#integration-tests)
