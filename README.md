@@ -9,6 +9,8 @@ This application is designed as an URL shortener. It operates by either acceptin
 
 The application makes use of the package [urlshort](./handler.go) located in this same repository.
 
+Live application available at https://app-urlshort.fly.dev/home
+
 To run the application by accepting JSON or YAML files, the following functions are used:
 
 - [func JSONHandler\(data \[\]byte, fallback http.Handler\) \(http.HandlerFunc, error\)](package_docs.md#func-jsonhandler)
@@ -176,3 +178,5 @@ Note that Docker is required to run integration tests. This is because the exter
 
 ### Github Actions
 CI/CD configured at [golang-setup.yml](.github/workflows/golang-setup.yml)
+
+Both tests and deployment to [fly.io](https://fly.io/) are automated with github actions

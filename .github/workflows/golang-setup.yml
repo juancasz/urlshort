@@ -2,7 +2,7 @@ name: golang-setup
 
 on:
   push:
-    branches: [ "main", "feature/flyio-cicd" ]
+    branches: [ "main" ]
 
 jobs:
   tests:
