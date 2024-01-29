@@ -2,7 +2,7 @@ name: golang-setup
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feature/flyio-cicd" ]
 
 jobs:
   tests:
@@ -27,3 +27,14 @@ jobs:
         run: go mod download
       - name: Run tests
         run: go test ./... -coverprofile cover.out && go tool cover -func cover.out
+
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+    concurrency: deploy-group    # optional: ensure only one action runs at a time
+    steps:
+      - uses: actions/checkout@v3
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

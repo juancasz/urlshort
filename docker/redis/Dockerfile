@@ -16,7 +16,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/redis
 
 # Stage 2: Final stage
-FROM alpine:latest
+FROM alpine:latest AS launch
 
 # Set the working directory
 WORKDIR /app
