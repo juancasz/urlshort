@@ -34,6 +34,7 @@ Any external storage service can be used and it must implement the following int
         - [YAML File Structure](#yaml-file-structure)
         - [Running the Server](#running-the-server)
     - [Redis](#redis)
+    - [Dockerized Application](#dockerized-application)
 - [Tests](#tests)
     - [Unit Tests](#unit-tests)
     - [Integration Tests](#integration-tests)
@@ -134,6 +135,25 @@ To halt the application and its related Redis container, use the following comma
 
 ```
 make stop_with_redis
+```
+
+#### Dockerized Application
+To run the whole application through docker using redis as the storage service, execute the following command:
+
+```
+make run_dockerized_app
+```
+
+This command will start the application at port 8080 and its associated Redis container at port 6379.
+
+The following screen will appear at `/home`:
+
+![home](images/home-page.png)
+
+To halt the application, use the following command:
+
+```
+make stop_dockerized_app
 ```
 
 ### Tests
