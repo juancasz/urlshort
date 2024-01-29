@@ -1,39 +1,32 @@
-FROM golang:alpine AS builder
+# Stage 1: Build stage
+FROM golang:1.21-alpine AS builder
 
-# Set necessary environmet variables needed for our image
-ENV GO111MODULE=on \
-    CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64
+# Set the working directory
+WORKDIR /app
 
-# Move to working directory /build
-WORKDIR /build
-
-# Copy and download dependency using go mod
-COPY go.mod .
-COPY go.sum .
+# Copy and download dependencies
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the code into the container
+# Copy the entire project
 COPY . .
 
-# Build the application
-RUN go build -C cmd/redis -o main .
+# Build the Go application
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/redis
 
-RUN echo $(ls)
+# Stage 2: Final stage
+FROM alpine:latest
 
-# Move to /dist directory as the place for resulting binary folder
-WORKDIR /dist
+# Set the working directory
+WORKDIR /app
 
-# Copy binary from build to main folder
-RUN cp /build/main .
+# Copy html files
+COPY --from=builder /app/html /app/html
 
-# Build a small image
-FROM scratch
-
-COPY --from=builder /dist/main /
+# Copy the binary from the build stage
+COPY --from=builder /app/main .
 
 EXPOSE 8080
 
-# Command to run
-ENTRYPOINT ["/main"]
+# Set the entrypoint command
+ENTRYPOINT ["/app/main"]
